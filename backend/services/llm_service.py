@@ -14,7 +14,7 @@ load_dotenv()
 
 # ─── Phoeniqs config (hardcoded defaults, overridable via .env) ──────────────
 PHOENIQS_BASE_URL = os.getenv("PHOENIQS_BASE_URL", "https://maas.phoeniqs.com/v1")
-PHOENIQS_API_KEY  = os.getenv("PHOENIQS_API_KEY", "sk-cOEzMSwrkBAxto7vJXtmow")
+PHOENIQS_API_KEY  = os.getenv("PHOENIQS_API_KEY")
 PHOENIQS_MODEL    = os.getenv("PHOENIQS_MODEL", "inference-gpt-oss-120b")
 
 _client: OpenAI | None = None
@@ -22,6 +22,8 @@ _client: OpenAI | None = None
 
 def _get_client() -> OpenAI:
     global _client
+    if not PHOENIQS_API_KEY:
+        raise RuntimeError("PHOENIQS_API_KEY is not configured")
     if _client is None:
         _client = OpenAI(
             base_url=PHOENIQS_BASE_URL,

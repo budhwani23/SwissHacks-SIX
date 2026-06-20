@@ -36,10 +36,20 @@ def get_client_portfolio(client_id: str) -> dict:
         else:
             cio_label = "Unknown"
 
+        if rating == "SELL":
+            allocation_status = "SELL"
+        elif drift_pct > 5:
+            allocation_status = "Overweight"
+        elif drift_pct < -5:
+            allocation_status = "Underweight"
+        else:
+            allocation_status = "On Target"
+
         enriched.append({
             **h,
             "drift_pct": round(drift_pct, 1),
             "cio_alignment": cio_label,
+            "allocation_status": allocation_status,
             "personal_alignment": "Pending"  # filled by reasoning agent
         })
 

@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from database import init_db
-from services.excel_loader import load_from_excel
+from services.workbook_loader import load_from_excel
 from services.news_service import load_mock_news
 from agents.reasoning_agent import run_analysis_for_all_clients
 

@@ -1,0 +1,5 @@
+import Icon from '../components/Icon'
+
+export default function ClientsPage({ clients, setClientId, navigate }) {
+  return <div className="page-wrap"><div className="page-intro"><div><span className="eyebrow">RELATIONSHIP BOOK</span><h2>All clients</h2><p>Open a relationship to inspect its portfolio, signals, DNA and CRM history.</p></div></div><div className="client-grid">{clients.map(c=><article className="client-card" key={c.id}><div className="client-card-top"><span className="avatar large">{c.name.slice(0,2).toUpperCase()}</span><b className={`severity ${String(c.alert_label).toLowerCase()}`}>{c.alert_label || 'Clear'}</b></div><h3>{c.name}</h3><p>{c.strategy || 'Private wealth'} strategy</p><div className="client-stats"><div><strong>{c.open_alerts || 0}</strong><small>Open signals</small></div><div><strong>{c.high_severity_alerts || 0}</strong><small>High priority</small></div></div><button className="outline wide" onClick={()=>{setClientId(c.id);navigate('profile')}}>Open profile <Icon name="arrow"/></button></article>)}</div></div>
+}

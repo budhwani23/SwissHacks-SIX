@@ -8,6 +8,8 @@ Uses a rule-based relevance scorer first, then calls LLM only for explanation.
 This keeps determinism high and LLM costs low.
 """
 import json
+import re
+import unicodedata
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -17,6 +19,18 @@ from services.llm_service import call_llm_json
 from agents.crm_agent import extract_client_dna
 
 
+def _normalise_name(value: str) -> str:
+    """Normalise company names while tolerating common Excel/encoding variants."""
+    value = (value or "").replace("Ã©", "é").replace("Ã¤", "ä").replace("Ã¶", "ö").replace("Ã¼", "ü")
+    value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode().lower()
+    value = re.sub(r"\b(ag|sa|ltd|corp|corporation|inc|holding|holdings|group|plc|nv)\b", " ", value)
+    return " ".join(re.findall(r"[a-z0-9]+", value))
+
+
+def _meaningful_words(values: list[str]) -> set[str]:
+    return {word for value in values for word in re.findall(r"[a-z]+", _normalise_name(value)) if len(word) >= 4}
+
+
 def calculate_relevance_score(client_dna: dict, holding: dict, news: dict) -> int:
     """
     Rule-based relevance score 0-100.
@@ -24,35 +38,32 @@ def calculate_relevance_score(client_dna: dict, holding: dict, news: dict) -> in
     """
     score = 0
 
-    values = [v.lower() for v in client_dna.get("values", [])]
-    red_flags = [r.lower() for r in client_dna.get("red_flags", [])]
-    avoid = [a.lower() for a in client_dna.get("avoid", [])]
-    theme = (news.get("theme") or "").lower()
-    headline = (news.get("headline") or "").lower()
-    company = (news.get("company") or "").lower()
-    issuer = (holding.get("issuer") or "").lower()
+    values = client_dna.get("values", [])
+    red_flags = client_dna.get("red_flags", [])
+    avoid = client_dna.get("avoid", [])
+    theme = _normalise_name(news.get("theme") or "")
+    headline = _normalise_name(news.get("headline") or "")
+    company = _normalise_name(news.get("company") or "")
+    issuer = _normalise_name(holding.get("issuer") or "")
 
-    # Company directly matches holding
-    if company and company in issuer or issuer in company:
-        score += 35
+    # A news alert must concern an asset the client actually owns. Previously,
+    # DNA theme matches were applied to every holding, creating thousands of rows.
+    company_matches_holding = bool(company and issuer and (company in issuer or issuer in company))
+    if not company_matches_holding:
+        return 0
+    score += 35
 
     # News theme matches client values
-    for value in values:
-        if any(word in theme for word in value.split()):
-            score += 15
-            break
+    if _meaningful_words(values) & set(theme.split()):
+        score += 15
 
     # News headline matches a red flag
-    for flag in red_flags:
-        if any(word in headline for word in flag.split()):
-            score += 25
-            break
+    if _meaningful_words(red_flags) & set(headline.split()):
+        score += 25
 
     # News matches avoid list
-    for item in avoid:
-        if any(word in headline for word in item.split()):
-            score += 20
-            break
+    if _meaningful_words(avoid) & set(headline.split()):
+        score += 20
 
     # Severity multiplier
     severity = (news.get("severity") or "low").lower()
@@ -128,6 +139,9 @@ def run_analysis_for_client(client_id: str, min_score: int = 30) -> list[dict]:
             if score < min_score:
                 continue
 
+            if db.alert_exists(client_id, holding["issuer"], news["id"]):
+                continue
+
             alert_type = determine_alert_type(dna, holding, news)
             severity = "High" if score >= 70 else "Medium" if score >= 45 else "Low"
 
@@ -145,6 +159,11 @@ def run_analysis_for_client(client_id: str, min_score: int = 30) -> list[dict]:
                 recommended_action=recommended_action,
                 confidence=score
             )
+
+            # Another analysis request may have inserted this exact signal while
+            # the explanation was being generated. The unique index wins safely.
+            if alert_id is None:
+                continue
 
             created_alerts.append({
                 "id": alert_id,
@@ -168,7 +187,7 @@ def run_analysis_for_all_clients(min_score: int = 30) -> dict:
     for client in clients:
         alerts = run_analysis_for_client(client["id"], min_score=min_score)
         results[client["id"]] = alerts
-        print(f"✓ {client['name']}: {len(alerts)} alerts generated")
+        print(f"[OK] {client['name']}: {len(alerts)} alerts generated")
     return results
 
 

@@ -70,7 +70,7 @@ def fetch_live_news(
 
     Returns list of dicts with keys: headline, company, theme, sentiment, severity, source
     """
-    api_key = "9b851e1b-7cb6-4571-b7aa-f8f3a16a3a00"
+    api_key = os.getenv("EVENT_REGISTRY_API_KEY") or os.getenv("NEWSAPI_KEY")
     if not api_key:
         print("NEWSAPI_KEY not set – skipping live news")
         return []
@@ -103,7 +103,6 @@ def fetch_live_news(
             )
             resp.raise_for_status()
             data = resp.json()
-            print(data)
         except Exception as e:
             print(f"Event Registry fetch failed for '{keyword}': {e}")
             continue

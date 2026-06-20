@@ -18,9 +18,9 @@ from typing import Optional
 import json
 
 import database as db
-from services.excel_loader import load_from_excel
+from services.workbook_loader import load_from_excel
 from services.news_service import load_mock_news
-from agents import crm_agent, portfolio_agent, news_agent, reasoning_agent, message_agent
+from agents import crm_agent, portfolio_agent, news_agent, reasoning_agent, message_agent, sql_agent
 
 
 # ─── Startup ─────────────────────────────────────────────────────────────────
@@ -29,12 +29,12 @@ from agents import crm_agent, portfolio_agent, news_agent, reasoning_agent, mess
 async def lifespan(app: FastAPI):
     print("Initialising database...")
     db.init_db()
-    db.reset_transient_data()
     print("Loading data (Excel or mock)...")
     load_from_excel()
-    print("Loading mock news triggers...")
-    load_mock_news()
-    print("✓ SwissHacks CRM backend ready")
+    if not db.get_all_news():
+        print("Loading mock news triggers...")
+        load_mock_news()
+    print("SwissHacks CRM backend ready")
     yield
 
 
@@ -63,6 +63,11 @@ class GenerateMessageRequest(BaseModel):
 
 class AlertStatusRequest(BaseModel):
     status: str  # open | dismissed | escalated | actioned
+
+
+class SqlQueryRequest(BaseModel):
+    question: str
+    summarise: bool = True
 
 
 # ─── Routes ──────────────────────────────────────────────────────────────────
@@ -312,3 +317,16 @@ def find_replacement(client_id: str, issuer: str):
         return {"message": "No CIO-approved replacement found in same sector"}
 
     return replacement
+
+
+# ── Natural-language data search ──
+
+@app.post("/sql-agent/query")
+def query_data(body: SqlQueryRequest):
+    """Translate a question into a safe, read-only SQLite query."""
+    try:
+        return sql_agent.query(body.question, summarise=body.summarise)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Search failed: {e}")

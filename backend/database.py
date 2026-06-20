@@ -108,6 +108,9 @@ def init_db():
             FOREIGN KEY (client_id) REFERENCES clients(id),
             FOREIGN KEY (alert_id) REFERENCES alerts(id)
         );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_alert_unique_signal
+        ON alerts(client_id, holding, news_id);
     """)
     conn.commit()
     conn.close()
@@ -179,7 +182,7 @@ def get_cio_recs(sector: str = None, mandate: str = None):
             query += " AND sector = ?"
             params.append(sector)
         if mandate:
-            query += " AND (mandate = ? OR mandate = 'All')"
+            query += " AND ((',' || mandate || ',') LIKE ('%,' || ? || ',%') OR mandate = 'All')"
             params.append(mandate)
         rows = conn.execute(query, params).fetchall()
     return rows_to_list(rows)
@@ -197,6 +200,12 @@ def get_all_news():
 
 def insert_news(headline, company, theme, sentiment, severity, source="mock"):
     with get_conn() as conn:
+        existing = conn.execute(
+            "SELECT id FROM news_events WHERE headline = ? AND COALESCE(company, '') = COALESCE(?, '')",
+            (headline, company)
+        ).fetchone()
+        if existing:
+            return existing["id"]
         cur = conn.execute(
             "INSERT INTO news_events (headline, company, theme, sentiment, severity, source) VALUES (?,?,?,?,?,?)",
             (headline, company, theme, sentiment, severity, source)
@@ -231,13 +240,22 @@ def get_all_alerts():
 def insert_alert(client_id, alert_type, severity, holding, news_id, reason, recommended_action, confidence):
     with get_conn() as conn:
         cur = conn.execute(
-            """INSERT INTO alerts
+            """INSERT OR IGNORE INTO alerts
                (client_id, alert_type, severity, holding, news_id, reason, recommended_action, confidence)
                VALUES (?,?,?,?,?,?,?,?)""",
             (client_id, alert_type, severity, holding, news_id, reason, recommended_action, confidence)
         )
         conn.commit()
-        return cur.lastrowid
+        return cur.lastrowid if cur.rowcount else None
+
+
+def alert_exists(client_id: str, holding: str, news_id: int) -> bool:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM alerts WHERE client_id = ? AND holding = ? AND news_id = ?",
+            (client_id, holding, news_id)
+        ).fetchone()
+    return row is not None
 
 
 def update_alert_status(alert_id: int, status: str):
