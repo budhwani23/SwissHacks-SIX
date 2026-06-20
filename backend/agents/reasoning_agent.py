@@ -54,6 +54,21 @@ def calculate_relevance_score(client_dna: dict, holding: dict, news: dict) -> in
             score += 20
             break
 
+    # CIO rebalancing news: alert any client whose holdings are in the affected category
+    theme = (news.get("theme") or "").lower()
+    if "cio rebalancing" in theme or "mandate update" in theme:
+        # Affects all clients — score by how much the client would resist
+        avoid = [a.lower() for a in client_dna.get("avoid", [])]
+        investment_prefs = [p.lower() for p in client_dna.get("investment_preferences", [])]
+        resistant_terms = ["ai", "us tech", "speculative", "technology", "american"]
+        for term in resistant_terms:
+            if any(term in a for a in avoid) or any(term in p for p in investment_prefs):
+                score += 40
+                break
+        # Also score based on holding type — blue chip / defensive holdings affected most
+        if holding.get("sector", "").lower() in ("financials", "telecoms", "consumer staples", "utilities"):
+            score += 20
+
     # Severity multiplier
     severity = (news.get("severity") or "low").lower()
     if severity == "high":
@@ -65,17 +80,21 @@ def calculate_relevance_score(client_dna: dict, holding: dict, news: dict) -> in
 
 
 def determine_alert_type(client_dna: dict, holding: dict, news: dict) -> str:
-    values = [v.lower() for v in client_dna.get("values", [])]
     sentiment = (news.get("sentiment") or "neutral").lower()
     theme = (news.get("theme") or "").lower()
+    headline = (news.get("headline") or "").lower()
 
     if sentiment == "positive":
         return "Positive opportunity"
     if any(word in theme for word in ["parkinson", "cancer", "research", "medical"]):
         return "Personal conflict"
-    if any(word in theme for word in ["esg", "sustainability", "deforestation", "labour"]):
+    if any(word in theme for word in ["esg", "sustainability", "deforestation", "labour", "labour exploitation"]):
         return "ESG conflict"
+    if any(word in theme for word in ["cio rebalancing", "cio downgrade", "mandate update"]):
+        return "CIO conflict"
     if (holding.get("cio_rating") or "").upper() == "SELL":
+        return "CIO conflict"
+    if any(word in headline for word in ["rebalancing", "rebalance", "mandate update", "blue chip", "shift from"]):
         return "CIO conflict"
     return "Portfolio conflict"
 

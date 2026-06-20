@@ -4,7 +4,6 @@ database.py - SQLite setup and all table definitions
 import sqlite3
 import json
 from pathlib import Path
-
 import os
 
 # Default: database.db in the same folder as this file.
@@ -35,8 +34,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS clients (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
-            strategy TEXT NOT NULL,  -- Defensive / Balanced / Growth
-            dna_json TEXT,           -- cached JSON from CRM agent
+            strategy TEXT NOT NULL,
+            dna_json TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -52,22 +51,41 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             client_id TEXT NOT NULL,
             issuer TEXT NOT NULL,
+            isin TEXT,
             sector TEXT,
+            asset_class TEXT,
             valor TEXT,
             mic TEXT,
+            yahoo_ticker TEXT,
             current_value_chf REAL,
             target_value_chf REAL,
-            cio_rating TEXT,         -- BUY / HOLD / SELL
+            quantity REAL,
+            cio_rating TEXT,
             FOREIGN KEY (client_id) REFERENCES clients(id)
         );
 
         CREATE TABLE IF NOT EXISTS cio_recommendations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             issuer TEXT NOT NULL,
+            isin TEXT,
             sector TEXT,
-            rating TEXT,             -- BUY / HOLD / SELL
-            mandate TEXT,            -- Defensive / Balanced / Growth / All
+            rating TEXT,
+            mandate TEXT,
+            swap_candidate TEXT,
             comment TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_id TEXT NOT NULL,
+            date TEXT,
+            isin TEXT,
+            issuer TEXT,
+            action TEXT,
+            quantity REAL,
+            price REAL,
+            value_chf REAL,
+            FOREIGN KEY (client_id) REFERENCES clients(id)
         );
 
         CREATE TABLE IF NOT EXISTS news_events (
@@ -75,8 +93,8 @@ def init_db():
             headline TEXT NOT NULL,
             company TEXT,
             theme TEXT,
-            sentiment TEXT,          -- positive / negative / neutral
-            severity TEXT,           -- high / medium / low
+            sentiment TEXT,
+            severity TEXT,
             source TEXT,
             published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -91,7 +109,7 @@ def init_db():
             reason TEXT,
             recommended_action TEXT,
             confidence INTEGER,
-            status TEXT DEFAULT 'open',  -- open / dismissed / escalated / actioned
+            status TEXT DEFAULT 'open',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (client_id) REFERENCES clients(id),
             FOREIGN KEY (news_id) REFERENCES news_events(id)
@@ -101,7 +119,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             client_id TEXT NOT NULL,
             alert_id INTEGER,
-            tone TEXT,               -- analytical / values-led / concise / detailed
+            tone TEXT,
             content TEXT NOT NULL,
             approved INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -109,8 +127,56 @@ def init_db():
             FOREIGN KEY (alert_id) REFERENCES alerts(id)
         );
     """)
+
+    # FTS5 virtual table for fast full-text search on CRM notes
+    cur.executescript("""
+        CREATE VIRTUAL TABLE IF NOT EXISTS crm_notes_fts
+        USING fts5(note, client_id UNINDEXED, date UNINDEXED, content='crm_notes', content_rowid='id');
+
+        CREATE TRIGGER IF NOT EXISTS crm_notes_ai AFTER INSERT ON crm_notes BEGIN
+            INSERT INTO crm_notes_fts(rowid, note, client_id, date)
+            VALUES (new.id, new.note, new.client_id, new.date);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS crm_notes_ad AFTER DELETE ON crm_notes BEGIN
+            INSERT INTO crm_notes_fts(crm_notes_fts, rowid, note, client_id, date)
+            VALUES ('delete', old.id, old.note, old.client_id, old.date);
+        END;
+    """)
+
     conn.commit()
     conn.close()
+
+
+# ─── Schema description (used by SQL agent) ──────────────────────────────────
+
+SCHEMA_DESCRIPTION = """
+SQLite database schema:
+
+clients(id TEXT PK, name TEXT, strategy TEXT [Defensive|Balanced|Growth], dna_json TEXT, created_at)
+crm_notes(id INT PK, client_id TEXT FK, date TEXT, note TEXT)
+crm_notes_fts  -- FTS5 virtual table; query with: SELECT rowid,note FROM crm_notes_fts WHERE note MATCH 'keyword'
+holdings(id INT PK, client_id TEXT FK, issuer TEXT, isin TEXT, sector TEXT, asset_class TEXT,
+         valor TEXT, mic TEXT, yahoo_ticker TEXT, current_value_chf REAL, target_value_chf REAL,
+         quantity REAL, cio_rating TEXT [BUY|HOLD|SELL])
+cio_recommendations(id INT PK, issuer TEXT, isin TEXT, sector TEXT, rating TEXT [BUY|HOLD|SELL],
+                    mandate TEXT [Defensive|Balanced|Growth|All], swap_candidate TEXT, comment TEXT)
+transactions(id INT PK, client_id TEXT FK, date TEXT, isin TEXT, issuer TEXT,
+             action TEXT [BUY|SELL], quantity REAL, price REAL, value_chf REAL)
+news_events(id INT PK, headline TEXT, company TEXT, theme TEXT, sentiment TEXT [positive|negative|neutral],
+            severity TEXT [high|medium|low], source TEXT, published_at)
+alerts(id INT PK, client_id TEXT FK, alert_type TEXT, severity TEXT [High|Medium|Low],
+       holding TEXT, news_id INT FK, reason TEXT, recommended_action TEXT,
+       confidence INT 0-100, status TEXT [open|dismissed|escalated|actioned], created_at)
+generated_messages(id INT PK, client_id TEXT FK, alert_id INT FK, tone TEXT, content TEXT,
+                   approved INT [0|1], created_at)
+
+Rules:
+- NEVER use DROP, DELETE, UPDATE, INSERT, CREATE in generated SQL — SELECT only
+- Use crm_notes_fts for keyword search: WHERE note MATCH 'term1 OR term2'
+- Join holdings to clients on client_id
+- strategy values are exactly: Defensive, Balanced, Growth
+"""
 
 
 # ─── helpers ────────────────────────────────────────────────────────────────
@@ -123,6 +189,17 @@ def row_to_dict(row):
 
 def rows_to_list(rows):
     return [dict(r) for r in rows]
+
+
+def execute_read_sql(sql: str, params: tuple = ()) -> list[dict]:
+    """Execute a read-only SQL query. Raises if non-SELECT detected."""
+    normalized = sql.strip().upper()
+    for forbidden in ("DROP ", "DELETE ", "UPDATE ", "INSERT ", "CREATE ", "ALTER "):
+        if forbidden in normalized:
+            raise ValueError(f"Write operation not allowed in SQL agent: {forbidden.strip()}")
+    with get_conn() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return rows_to_list(rows)
 
 
 # ─── client queries ──────────────────────────────────────────────────────────
@@ -141,10 +218,7 @@ def get_client(client_id: str):
 
 def upsert_client_dna(client_id: str, dna_json: str):
     with get_conn() as conn:
-        conn.execute(
-            "UPDATE clients SET dna_json = ? WHERE id = ?",
-            (dna_json, client_id)
-        )
+        conn.execute("UPDATE clients SET dna_json = ? WHERE id = ?", (dna_json, client_id))
         conn.commit()
 
 
@@ -155,6 +229,21 @@ def get_crm_notes(client_id: str):
         rows = conn.execute(
             "SELECT * FROM crm_notes WHERE client_id = ? ORDER BY date DESC",
             (client_id,)
+        ).fetchall()
+    return rows_to_list(rows)
+
+
+def search_crm_notes(client_id: str, keywords: list[str], limit: int = 10) -> list[dict]:
+    """FTS5 keyword search on CRM notes for a client. Much faster than LIKE."""
+    fts_query = " OR ".join(keywords)
+    with get_conn() as conn:
+        rows = conn.execute(
+            """SELECT n.id, n.client_id, n.date, n.note
+               FROM crm_notes n
+               JOIN crm_notes_fts f ON n.id = f.rowid
+               WHERE f.note MATCH ? AND n.client_id = ?
+               ORDER BY n.date DESC LIMIT ?""",
+            (fts_query, client_id, limit)
         ).fetchall()
     return rows_to_list(rows)
 
@@ -182,6 +271,17 @@ def get_cio_recs(sector: str = None, mandate: str = None):
             query += " AND (mandate = ? OR mandate = 'All')"
             params.append(mandate)
         rows = conn.execute(query, params).fetchall()
+    return rows_to_list(rows)
+
+
+# ─── transactions ─────────────────────────────────────────────────────────────
+
+def get_transactions(client_id: str):
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM transactions WHERE client_id = ? ORDER BY date DESC",
+            (client_id,)
+        ).fetchall()
     return rows_to_list(rows)
 
 

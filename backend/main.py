@@ -21,6 +21,7 @@ import database as db
 from services.excel_loader import load_from_excel
 from services.news_service import load_mock_news
 from agents import crm_agent, portfolio_agent, news_agent, reasoning_agent, message_agent
+from agents import sql_agent
 
 
 # ─── Startup ─────────────────────────────────────────────────────────────────
@@ -55,6 +56,11 @@ app.add_middleware(
 
 
 # ─── Request models ───────────────────────────────────────────────────────────
+
+class SqlQueryRequest(BaseModel):
+    question: str
+    summarise: Optional[bool] = True  # True = also ask LLM to summarise rows
+
 
 class GenerateMessageRequest(BaseModel):
     alert_id: int
@@ -284,6 +290,36 @@ def refresh_news(live: bool = True, companies: Optional[str] = None):
 def get_cio_recs(sector: Optional[str] = None, mandate: Optional[str] = None):
     """Returns CIO-approved universe, optionally filtered by sector/mandate."""
     return db.get_cio_recs(sector=sector, mandate=mandate)
+
+
+# ── SQL Agent ──
+
+@app.post("/sql-agent/query")
+def sql_agent_query(body: SqlQueryRequest):
+    """
+    Natural language → SQL → results (and optional LLM summary).
+
+    Examples:
+      {"question": "Which clients have open high-severity alerts?"}
+      {"question": "Show Schneider's healthcare holdings", "summarise": false}
+      {"question": "Find CRM notes mentioning Parkinson's disease"}
+    """
+    if body.summarise:
+        result = sql_agent.query_with_summary(body.question)
+    else:
+        result = sql_agent.query(body.question)
+
+    if result.get("error"):
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    return result
+
+
+@app.get("/sql-agent/schema")
+def sql_agent_schema():
+    """Returns the DB schema description used by the SQL agent."""
+    from database import SCHEMA_DESCRIPTION
+    return {"schema": SCHEMA_DESCRIPTION}
 
 
 # ── Replacement finder ──
