@@ -1,0 +1,58 @@
+[
+  {
+    "headline": "PharmaX AG announces closure of Parkinson's disease research division amid cost cuts",
+    "company": "PharmaX AG",
+    "theme": "Parkinson Research",
+    "sentiment": "negative",
+    "severity": "high"
+  },
+  {
+    "headline": "Nestlé subsidiary linked to ongoing deforestation in Indonesian palm oil supply chain",
+    "company": "Nestlé",
+    "theme": "Sustainability",
+    "sentiment": "negative",
+    "severity": "high"
+  },
+  {
+    "headline": "Swiss Life downgraded to SELL by CIO committee following Q3 earnings miss",
+    "company": "Swiss Life",
+    "theme": "CIO Downgrade",
+    "sentiment": "negative",
+    "severity": "high"
+  },
+  {
+    "headline": "GlobalLogistics Corp faces US Senate probe over labour conditions in Asian warehouses",
+    "company": "GlobalLogistics Corp",
+    "theme": "Labour Exploitation",
+    "sentiment": "negative",
+    "severity": "high"
+  },
+  {
+    "headline": "Roche reports breakthrough in Parkinson's biomarker detection, expanding research program",
+    "company": "Roche",
+    "theme": "Parkinson Research",
+    "sentiment": "positive",
+    "severity": "medium"
+  },
+  {
+    "headline": "Sika AG achieves carbon-neutral manufacturing milestone across European operations",
+    "company": "Sika AG",
+    "theme": "Sustainability",
+    "sentiment": "positive",
+    "severity": "medium"
+  },
+  {
+    "headline": "NVIDIA faces US export controls on AI chips, share price drops 12%",
+    "company": "NVIDIA",
+    "theme": "Regulatory Risk",
+    "sentiment": "negative",
+    "severity": "medium"
+  },
+  {
+    "headline": "Swisscom acquires smaller broadband operator; CIO maintains HOLD rating",
+    "company": "Swisscom",
+    "theme": "M&A",
+    "sentiment": "neutral",
+    "severity": "low"
+  }
+]
