@@ -6,8 +6,10 @@ import PriorityList from './components/PriorityList'
 import ClientDetail from './components/ClientDetail'
 import DraftNote from './components/DraftNote'
 import TrustConstellation from './components/TrustConstellation'
+import ThemeToggle from './components/ThemeToggle'
 
 export default function App() {
+  const [theme, setTheme] = useState(() => localStorage.getItem('sixgnals-theme') || 'dark')
   const [clients, setClients]             = useState([])
   const [selectedId, setSelectedId]       = useState(null)
   const [detail, setDetail]               = useState(null)
@@ -23,6 +25,11 @@ export default function App() {
 
   // ── Trust constellation overlay ───────────────────────────────────
   const [showConstellation, setShowConstellation] = useState(false)
+
+  useEffect(() => {
+    localStorage.setItem('sixgnals-theme', theme)
+    document.documentElement.dataset.theme = theme
+  }, [theme])
 
   // ── Landing → workspace transition ───────────────────────────────
   const handleLandingSelect = (clientId) => {
@@ -170,7 +177,7 @@ export default function App() {
   const hasNoAlerts = clients.length > 0 && totalOpen === 0
 
   return (
-    <div className="app">
+    <div className="app" data-theme={theme}>
       {/* ── Landing page ── */}
       {showLanding && (
         <LandingPage
@@ -178,6 +185,8 @@ export default function App() {
           loading={loading.clients}
           onSelect={handleLandingSelect}
           isExiting={isExiting}
+          theme={theme}
+          onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
         />
       )}
 
@@ -187,11 +196,15 @@ export default function App() {
         <header className="app-header">
           <div className="header-left">
             <span className="logo">
-              <img src="/sixgnals-logo-dark.svg" alt="SIXgnals" />
+              <img src={theme === 'light' ? '/sixgnals-logo.svg' : '/sixgnals-logo-dark.svg'} alt="SIXgnals" />
             </span>
             <span className="header-sub">Bringing ease in Wealth Management</span>
           </div>
           <div className="header-right">
+            <ThemeToggle
+              theme={theme}
+              onToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+            />
             <span className="live-badge">● LIVE</span>
             <span className="live-source">Bloomberg · Event Registry</span>
             <button

@@ -39,7 +39,7 @@ function ConstellationAvatar({ client }) {
         <img
           src={client.photo}
           alt=""
-          className={client.photoSide === 'right' ? 'profile-right' : 'profile-left'}
+          className="profile-photo"
         />
       ) : client.initials}
     </span>
@@ -127,7 +127,7 @@ export default function TrustConstellation({ clients, onClose, onSelectClient })
                 return (
                   <g
                     key={g.key}
-                    className={`tc-cluster${isActive ? ' active' : ''}`}
+                    className={`tc-cluster band-${g.key}${isActive ? ' active' : ''}`}
                     onClick={() => setActiveBand(g.key)}
                     role="button"
                     tabIndex="0"

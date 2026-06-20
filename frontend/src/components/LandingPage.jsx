@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CLIENT_META, computeTrustScore, priorityDot } from '../constants'
 import ProfileAvatar from './ProfileAvatar'
+import ThemeToggle from './ThemeToggle'
 
 // Priority scale constrained to the SIXgnals palette: risk red → champagne → slate
 const RANK_COLORS = ['#e43f47', '#ce414a', '#a84651', '#46536d', '#626d82', '#7f8999']
@@ -12,7 +13,7 @@ function getGreeting() {
   return 'Good evening'
 }
 
-export default function LandingPage({ clients, loading, onSelect, isExiting }) {
+export default function LandingPage({ clients, loading, onSelect, isExiting, theme, onThemeToggle }) {
   const [current, setCurrent] = useState(0)
   const VISIBLE = Math.min(clients.length, 6)
   const canPrev = current > 0
@@ -25,7 +26,10 @@ export default function LandingPage({ clients, loading, onSelect, isExiting }) {
     <div className={`landing${isExiting ? ' landing-exit' : ''}`}>
       {/* ── Logo ── */}
       <div className="landing-logo">
-        <img src="/sixgnals-logo-dark.svg" alt="SIXgnals" />
+        <img src={theme === 'light' ? '/sixgnals-logo.svg' : '/sixgnals-logo-dark.svg'} alt="SIXgnals" />
+      </div>
+      <div className="landing-theme-toggle">
+        <ThemeToggle theme={theme} onToggle={onThemeToggle} />
       </div>
 
       {/* ── Greeting ── */}

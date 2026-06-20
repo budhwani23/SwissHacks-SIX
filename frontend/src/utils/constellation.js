@@ -70,7 +70,6 @@ export function buildConstellation(liveClients = []) {
       initials: meta?.avatar || initials(c.name),
       color: meta?.color || '#5b6b8c',
       photo: meta?.photo || null,
-      photoSide: meta?.photoSide || null,
       aum: REAL_AUM[c.id] ?? +(2 + r() * 20).toFixed(1),
       trust: score,
       momentum: +((r() * 2 - 1).toFixed(2)),

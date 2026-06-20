@@ -8,8 +8,7 @@ export const CLIENT_META = {
     tone_context: 'Client is 58 years old, HNW. Write warmly and with empathy. Reference their personal foundation and deep commitment to healthcare and Parkinson\'s research. Values-led tone.',
     avatar: 'S',
     color: '#31405e',
-    photo: '/profiles/client-portraits.png',
-    photoSide: 'right',
+    photo: '/profiles/schneider.png',
   },
   huber: {
     age: 52,
@@ -18,8 +17,7 @@ export const CLIENT_META = {
     tone_context: 'Client is 52 years old, HNW. Be factual, data-driven and brief. Reference ESG metrics and sustainability outcomes specifically. No fluff.',
     avatar: 'H',
     color: '#59657b',
-    photo: '/profiles/client-portraits.png',
-    photoSide: 'left',
+    photo: '/profiles/huber.png',
   },
   raeber: {
     age: 68,
