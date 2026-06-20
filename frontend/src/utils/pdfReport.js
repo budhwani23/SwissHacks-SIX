@@ -123,13 +123,13 @@ function buildHTML({ client, meta, dna, openAlerts, notes, message }) {
     .header::after {
       content: '';
       position: absolute; bottom: 0; left: 0; right: 0;
-      height: 3px; background: #c9a84c;
+      height: 3px; background: #e4161e;
     }
     .header-top { display: flex; align-items: flex-start; justify-content: space-between; }
     .logo-wrap { display: flex; align-items: center; gap: 4px; margin-bottom: 16px; }
-    .logo-six   { font-size: 20px; font-weight: 800; color: #e53e3e; letter-spacing: -.5px; }
+    .logo-six   { font-size: 20px; font-weight: 800; color: #e4161e; letter-spacing: -.5px; }
     .logo-gnals { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -.5px; }
-    .logo-check { font-size: 13px; color: #c9a84c; margin-left: 3px; }
+    .logo-check { font-size: 13px; color: #e4161e; margin-left: 3px; }
     .header-meta { text-align: right; font-size: 11px; color: #94a3b8; line-height: 1.7; }
     .header-title { font-size: 22px; font-weight: 700; color: #fff; }
     .header-sub   { font-size: 12px; color: #94a3b8; margin-top: 3px; }
@@ -235,15 +235,15 @@ function buildHTML({ client, meta, dna, openAlerts, notes, message }) {
         <div class="logo-wrap">
           <span class="logo-six">SIX</span>
           <span class="logo-gnals">gnals</span>
-          <span class="logo-check">✓</span>
+          <span class="logo-check">●</span>
         </div>
-        <div class="header-title">Relationship Manager Advisory Report</div>
+        <div class="header-title">SIXgnals Relationship Manager Report</div>
         <div class="header-sub">AI-Assisted Client Intelligence · Strictly Confidential</div>
       </div>
       <div class="header-meta">
         <div><strong style="color:#fff">Date:</strong> ${dateStr}</div>
         <div><strong style="color:#fff">Ref:</strong> ${refNum}</div>
-        <div><strong style="color:#fff">Prepared by:</strong> RM Alex</div>
+        <div><strong style="color:#fff">Prepared by:</strong> SIXgnal Relationship Manager</div>
         <div style="margin-top:6px">
           <span class="confidential">CONFIDENTIAL</span>
         </div>
@@ -323,7 +323,7 @@ function buildHTML({ client, meta, dna, openAlerts, notes, message }) {
   <div class="footer">
     <div class="footer-row">
       <div>
-        <strong>SwissHacks CRM Intelligence Platform</strong> — Powered by SIXgnals AI<br/>
+        <strong>SIXgnals Relationship Manager</strong> — Trust for Wealth<br/>
         This report is AI-assisted. All recommendations require RM review and approval before any client communication.
         Past performance is not indicative of future results. This document does not constitute investment advice.
       </div>

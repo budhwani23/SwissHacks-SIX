@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildConstellation } from '../utils/constellation'
 import { trustColor } from '../constants'
 
@@ -20,10 +20,10 @@ function scatter(seed, n, spreadX, spreadY) {
 
 // Fixed quadrant anchors for each band (matches the design layout).
 const ANCHORS = {
-  atrisk:    { cx: 235, cy: 180, rx: 150, ry: 112 },
-  growing:   { cx: 555, cy: 180, rx: 150, ry: 112 },
-  stable:    { cx: 400, cy: 332, rx: 118, ry: 92 },
-  attention: { cx: 235, cy: 410, rx: 150, ry: 108 },
+  atrisk:    { cx: 220, cy: 170, rx: 108, ry: 82 },
+  growing:   { cx: 558, cy: 170, rx: 122, ry: 86 },
+  stable:    { cx: 505, cy: 390, rx: 142, ry: 92 },
+  attention: { cx: 220, cy: 390, rx: 116, ry: 86 },
 }
 
 function momentumTag(m) {
@@ -32,28 +32,76 @@ function momentumTag(m) {
   return { txt: 'Stable', cls: 'mom-flat' }
 }
 
+function ConstellationAvatar({ client }) {
+  return (
+    <span className={`tc-avatar${client.photo ? ' has-photo' : ''}`} style={{ background: client.photo ? undefined : client.color }}>
+      {client.photo ? (
+        <img
+          src={client.photo}
+          alt=""
+          className={client.photoSide === 'right' ? 'profile-right' : 'profile-left'}
+        />
+      ) : client.initials}
+    </span>
+  )
+}
+
 export default function TrustConstellation({ clients, onClose, onSelectClient }) {
   const { groups, focus, total } = useMemo(() => buildConstellation(clients), [clients])
   const [activeBand, setActiveBand] = useState(null)
+  const closeRef = useRef(null)
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    closeRef.current?.focus()
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   const active = activeBand ? groups.find(g => g.key === activeBand) : null
 
   return (
     <div className="tc-overlay" onClick={onClose}>
-      <div className="tc-panel" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="tc-panel"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="trust-constellation-title"
+        aria-describedby="trust-constellation-description"
+      >
         {/* ── Header ── */}
         <div className="tc-header">
           <div>
-            <h2>Trust Constellation</h2>
-            <p>{total} clients · grouped by trust momentum. Click a cluster to see the profiles.</p>
+            <h2 id="trust-constellation-title">Trust Constellation</h2>
+            <p id="trust-constellation-description">{total} clients · grouped by trust momentum. Select a cluster to see the profiles.</p>
           </div>
-          <button className="tc-close" onClick={onClose}>×</button>
+          <button ref={closeRef} className="tc-close" onClick={onClose} aria-label="Close Trust Constellation">×</button>
         </div>
 
         <div className="tc-body">
           {/* ── Chart ── */}
           <div className="tc-chart-wrap">
-            <svg viewBox="0 0 720 540" className="tc-svg" preserveAspectRatio="xMidYMid meet">
+            <svg
+              viewBox="0 0 720 540"
+              className="tc-svg"
+              preserveAspectRatio="xMidYMid meet"
+              role="img"
+              aria-label="Client trust momentum by assets under management"
+            >
+              <defs>
+                <filter id="cluster-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="#02050d" floodOpacity="0.24" />
+                </filter>
+                <filter id="count-shadow" x="-40%" y="-40%" width="180%" height="180%">
+                  <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor="#02050d" floodOpacity="0.30" />
+                </filter>
+              </defs>
+
+              <rect x="62" y="48" width="646" height="452" rx="18" className="tc-plot-bg" />
+
               {/* axis labels */}
               <text x="22" y="58" className="tc-axis-cap">HIGH</text>
               <text x="22" y="498" className="tc-axis-cap">LOW</text>
@@ -73,25 +121,34 @@ export default function TrustConstellation({ clients, onClose, onSelectClient })
               {/* clusters */}
               {groups.map((g) => {
                 const a = ANCHORS[g.key]
-                const dots = scatter(g.key.charCodeAt(0) * 97 + g.count, Math.min(g.count, 8), a.rx * 0.78, a.ry * 0.78)
+                const dots = scatter(g.key.charCodeAt(0) * 97 + g.count, Math.min(g.count, 9), a.rx * 0.72, a.ry * 0.62)
                 const isActive = activeBand === g.key
+                const countRadius = Math.min(42, 32 + Math.sqrt(g.count) * 1.1)
                 return (
                   <g
                     key={g.key}
                     className={`tc-cluster${isActive ? ' active' : ''}`}
                     onClick={() => setActiveBand(g.key)}
+                    role="button"
+                    tabIndex="0"
+                    aria-label={`${g.label}: ${g.count} clients, CHF ${g.totalAum.toFixed(1)} million`}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setActiveBand(g.key)}
                   >
                     <ellipse cx={a.cx} cy={a.cy} rx={a.rx} ry={a.ry} fill={g.soft}
-                      stroke={g.color} strokeOpacity="0.25" />
+                      stroke={g.color} strokeOpacity="0.38" className="tc-cluster-shell" filter="url(#cluster-shadow)" />
+                    <ellipse cx={a.cx} cy={a.cy - 8} rx={a.rx - 10} ry={a.ry - 14}
+                      fill="none" stroke="rgba(255,255,255,.06)" className="tc-cluster-highlight" />
                     {dots.map((d, i) => (
-                      <circle key={i} cx={a.cx + d.dx} cy={a.cy + d.dy} r="4.5"
-                        fill={g.color} fillOpacity="0.7" />
+                      <circle key={i} cx={a.cx + d.dx} cy={a.cy + d.dy} r="3.5"
+                        fill={g.color} fillOpacity="0.62" className="tc-member-dot" />
                     ))}
-                    <circle cx={a.cx} cy={a.cy} r="40" fill={g.color} className="tc-count-circle" />
-                    <text x={a.cx} y={a.cy + 9} textAnchor="middle" className="tc-count-num">{g.count}</text>
-                    <text x={a.cx} y={a.cy + a.ry + 22} textAnchor="middle" className="tc-cluster-label"
+                    <circle cx={a.cx} cy={a.cy - 5} r={countRadius} fill={g.color}
+                      className="tc-count-circle" filter="url(#count-shadow)" />
+                    <text x={a.cx} y={a.cy + 3} textAnchor="middle" className="tc-count-num">{g.count}</text>
+                    <text x={a.cx} y={a.cy + 20} textAnchor="middle" className="tc-count-caption">CLIENTS</text>
+                    <text x={a.cx} y={a.cy + a.ry - 22} textAnchor="middle" className="tc-cluster-label"
                       fill={g.color}>{g.label}</text>
-                    <text x={a.cx} y={a.cy + a.ry + 42} textAnchor="middle" className="tc-cluster-aum">
+                    <text x={a.cx} y={a.cy + a.ry - 7} textAnchor="middle" className="tc-cluster-aum">
                       CHF {g.totalAum.toFixed(1)}M
                     </text>
                   </g>
@@ -113,7 +170,7 @@ export default function TrustConstellation({ clients, onClose, onSelectClient })
                       onClick={() => c.real && onSelectClient?.(c.id)}
                     >
                       <span className="tc-focus-rank">{i + 1}</span>
-                      <span className="tc-avatar" style={{ background: c.color }}>{c.initials}</span>
+                      <ConstellationAvatar client={c} />
                       <div className="tc-focus-meta">
                         <div className="tc-focus-name">{c.name}</div>
                         <div className="tc-focus-aum">CHF {c.aum.toFixed(1)}M</div>
@@ -139,7 +196,7 @@ export default function TrustConstellation({ clients, onClose, onSelectClient })
                         className={`tc-profile${c.real ? ' clickable' : ''}`}
                         onClick={() => c.real && onSelectClient?.(c.id)}
                       >
-                        <span className="tc-avatar" style={{ background: c.color }}>{c.initials}</span>
+                        <ConstellationAvatar client={c} />
                         <div className="tc-profile-meta">
                           <div className="tc-profile-name">
                             {c.name}{c.real && <span className="tc-real-badge">client</span>}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 200" role="img" aria-labelledby="title desc">
+  <title id="title">SIXgnals</title>
+  <desc id="desc">SIXgnals wordmark for dark backgrounds</desc>
+  <g fill="#e3151b">
+    <path d="M8 142h44c15 0 24-5 33-18l58-84c10-15 25-22 45-22h50v32h-45c-10 0-16 3-22 12l-59 85c-14 20-31 28-58 28H8z"/>
+    <path d="M262 18h34v157h-34z"/>
+    <path d="M326 18h42l52 54 49-54h43l-71 77 73 80h-43l-52-57-52 57h-43l74-80z"/>
+  </g>
+  <text x="485" y="156" fill="#f5f7fb" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="176" font-weight="900" letter-spacing="-12">gnals</text>
+</svg>

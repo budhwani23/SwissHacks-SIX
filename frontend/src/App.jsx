@@ -186,8 +186,10 @@ export default function App() {
 
         <header className="app-header">
           <div className="header-left">
-            <span className="logo">⬡ SwissHacks CRM</span>
-            <span className="header-sub">Relationship Intelligence Platform</span>
+            <span className="logo">
+              <img src="/sixgnals-logo-dark.svg" alt="SIXgnals" />
+            </span>
+            <span className="header-sub">Bringing ease in Wealth Management</span>
           </div>
           <div className="header-right">
             <span className="live-badge">● LIVE</span>
@@ -197,7 +199,7 @@ export default function App() {
               onClick={runAnalysis}
               disabled={loading.analysis}
             >
-              {loading.analysis ? '⟳  Analysing…' : '▶  Run Analysis'}
+              {loading.analysis ? 'Analysing…' : 'Run analysis'}
             </button>
           </div>
         </header>

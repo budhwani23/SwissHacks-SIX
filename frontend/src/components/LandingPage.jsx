@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { CLIENT_META, computeTrustScore, priorityDot } from '../constants'
+import ProfileAvatar from './ProfileAvatar'
 
-// Rank colours matching the design: red → orange → amber → blue → grey
-const RANK_COLORS = ['#e53e3e', '#dd6b20', '#d69e2e', '#3182ce', '#718096', '#a0aec0']
+// Priority scale constrained to the SIXgnals palette: risk red → champagne → slate
+const RANK_COLORS = ['#e43f47', '#ce414a', '#a84651', '#46536d', '#626d82', '#7f8999']
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -24,15 +25,13 @@ export default function LandingPage({ clients, loading, onSelect, isExiting }) {
     <div className={`landing${isExiting ? ' landing-exit' : ''}`}>
       {/* ── Logo ── */}
       <div className="landing-logo">
-        <span className="logo-six">SIX</span>
-        <span className="logo-gnals">gnals</span>
-        <span className="logo-icon">✓</span>
+        <img src="/sixgnals-logo-dark.svg" alt="SIXgnals" />
       </div>
 
       {/* ── Greeting ── */}
       <div className="landing-greeting">
-        <h1>{getGreeting()}, Alex 👋</h1>
-        <p>Here are your top client <span className="highlight">risk priorities</span> for today.</p>
+        <h1>{getGreeting()}</h1>
+        <p>Your highest-priority <span className="highlight">client risks</span> for today.</p>
       </div>
 
       {/* ── Carousel ── */}
@@ -41,10 +40,11 @@ export default function LandingPage({ clients, loading, onSelect, isExiting }) {
           className="carousel-arrow left"
           onClick={prev}
           disabled={!canPrev}
+          aria-label="Show previous client priority"
         >‹</button>
 
         {loading ? (
-          <div className="landing-loading">
+          <div className="landing-loading" role="status" aria-live="polite">
             <div className="spinner" style={{ width: 28, height: 28, borderWidth: 3 }} />
             <span>Loading client priorities…</span>
           </div>
@@ -55,7 +55,7 @@ export default function LandingPage({ clients, loading, onSelect, isExiting }) {
               const color      = RANK_COLORS[Math.min(globalRank, RANK_COLORS.length - 1)]
               const meta       = CLIENT_META[client.id]
               const score      = computeTrustScore(client, client.open_alerts > 0 ? 3 : 6, !!client.personal_theme)
-              const { dot }    = priorityDot(client)
+              const { dot, tone } = priorityDot(client)
               const isCenter   = idx === Math.floor(VISIBLE / 2) - (VISIBLE < 4 ? 0 : 1)
 
               return (
@@ -63,6 +63,10 @@ export default function LandingPage({ clients, loading, onSelect, isExiting }) {
                   key={client.id}
                   className={`client-card-landing${isCenter ? ' center' : ''}`}
                   onClick={() => onSelect(client.id)}
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelect(client.id)}
+                  role="button"
+                  tabIndex="0"
+                  aria-label={`Open ${client.name}, priority ${globalRank + 1}, ${client.open_alerts} open alerts`}
                   style={{ '--rank-color': color }}
                 >
                   {/* Rank number */}
@@ -72,19 +76,18 @@ export default function LandingPage({ clients, loading, onSelect, isExiting }) {
                   <div className="rank-underline" style={{ background: color }} />
 
                   {/* Avatar */}
-                  <div
+                  <ProfileAvatar
                     className="landing-avatar"
-                    style={{ background: meta?.color || '#718096' }}
-                  >
-                    {meta?.avatar || client.name[0]}
-                  </div>
+                    meta={meta}
+                    fallback={meta?.avatar || client.name[0]}
+                  />
 
                   {/* Name */}
                   <div className="landing-client-name">{client.name}</div>
 
                   {/* Status dot */}
                   {client.open_alerts > 0 && (
-                    <div className="landing-alert-dot" style={{ color }}>
+                    <div className={`landing-alert-dot status-${tone}`}>
                       {dot} {client.open_alerts} alert{client.open_alerts > 1 ? 's' : ''}
                     </div>
                   )}
@@ -98,6 +101,7 @@ export default function LandingPage({ clients, loading, onSelect, isExiting }) {
           className="carousel-arrow right"
           onClick={next}
           disabled={!canNext}
+          aria-label="Show next client priority"
         >›</button>
       </div>
 
@@ -109,6 +113,8 @@ export default function LandingPage({ clients, loading, onSelect, isExiting }) {
               key={i}
               className={`dot${i === current ? ' active' : ''}`}
               onClick={() => setCurrent(i)}
+              aria-label={`Show priority page ${i + 1}`}
+              aria-current={i === current ? 'true' : undefined}
             />
           ))}
         </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CLIENT_META, computeTrustScore, trustColor, trustLabel, SEVERITY_STYLE } from '../constants'
+import ProfileAvatar from './ProfileAvatar'
 
 export default function ClientDetail({
   client, meta, detail, trustScore, onOpenConstellation,
@@ -26,9 +27,11 @@ export default function ClientDetail({
       {/* ── Client header ── */}
       <div className="client-header">
         <div className="client-header-top">
-          <div className="avatar" style={{ background: meta?.color || '#718096', width: 44, height: 44, fontSize: 18 }}>
-            {meta?.avatar || client.name[0]}
-          </div>
+          <ProfileAvatar
+            meta={meta}
+            fallback={meta?.avatar || client.name[0]}
+            style={{ width: 44, height: 44, fontSize: 18 }}
+          />
           <div>
             <div className="client-header-name">{client.name}</div>
             <div className="client-header-meta">
@@ -41,6 +44,9 @@ export default function ClientDetail({
             onClick={onOpenConstellation}
             title="View Trust Constellation"
             role="button"
+            tabIndex="0"
+            aria-label={`Trust score ${score}, ${trustLabel(score)}. Open Trust Constellation`}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpenConstellation?.()}
           >
             <div className="trust-badge-score" style={{ color: scoreColor }}>{score}</div>
             <div className="trust-badge-label">TRUST · {trustLabel(score)}</div>
@@ -48,12 +54,16 @@ export default function ClientDetail({
         </div>
 
         {/* ── Tabs ── */}
-        <div className="tabs">
+        <div className="tabs" role="tablist" aria-label="Client information">
           {['alerts', 'portfolio', 'dna'].map(t => (
             <button
               key={t}
               className={`tab-btn${tab === t ? ' active' : ''}`}
               onClick={() => setTab(t)}
+              role="tab"
+              aria-selected={tab === t}
+              aria-controls={`client-panel-${t}`}
+              id={`client-tab-${t}`}
             >
               {t === 'alerts'    ? `Alerts (${detail?.alerts?.filter(a => a.status === 'open').length || 0})` :
                t === 'portfolio' ? 'Portfolio' :
@@ -64,7 +74,12 @@ export default function ClientDetail({
       </div>
 
       {/* ── Tab content ── */}
-      <div className="mid-content">
+      <div
+        className="mid-content"
+        role="tabpanel"
+        id={`client-panel-${tab}`}
+        aria-labelledby={`client-tab-${tab}`}
+      >
         {loading ? (
           <div className="loading-state"><div className="spinner" /> Loading client data…</div>
         ) : tab === 'alerts' ? (
@@ -141,7 +156,7 @@ function AlertCard({ alert, selected, onSelect, onDismiss, dimmed }) {
       )}
       <div className="alert-reason">{alert.reason}</div>
       {alert.recommended_action && (
-        <div style={{ fontSize: 12, color: '#2c5282', marginBottom: 8 }}>
+        <div style={{ fontSize: 12, color: 'var(--primary)', marginBottom: 8 }}>
           → {alert.recommended_action}
         </div>
       )}

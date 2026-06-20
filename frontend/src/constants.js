@@ -7,7 +7,9 @@ export const CLIENT_META = {
     wealth_tier: 'HNW',
     tone_context: 'Client is 58 years old, HNW. Write warmly and with empathy. Reference their personal foundation and deep commitment to healthcare and Parkinson\'s research. Values-led tone.',
     avatar: 'S',
-    color: '#4A90D9',
+    color: '#31405e',
+    photo: '/profiles/client-portraits.png',
+    photoSide: 'right',
   },
   huber: {
     age: 52,
@@ -15,7 +17,9 @@ export const CLIENT_META = {
     wealth_tier: 'HNW',
     tone_context: 'Client is 52 years old, HNW. Be factual, data-driven and brief. Reference ESG metrics and sustainability outcomes specifically. No fluff.',
     avatar: 'H',
-    color: '#38a169',
+    color: '#59657b',
+    photo: '/profiles/client-portraits.png',
+    photoSide: 'left',
   },
   raeber: {
     age: 68,
@@ -23,7 +27,7 @@ export const CLIENT_META = {
     wealth_tier: 'UHNW',
     tone_context: 'Client is 68 years old, UHNW, retired CFO. Use a formal, precise and respectful tone. Capital preservation is the only priority. Never mention speculative assets or AI stocks.',
     avatar: 'R',
-    color: '#E8A838',
+    color: '#8f3039',
   },
   ammann: {
     age: 34,
@@ -31,7 +35,7 @@ export const CLIENT_META = {
     wealth_tier: 'HNW',
     tone_context: 'Client is 34 years old, HNW, tech entrepreneur. Be direct and punchy. Use concise bullet points. Growth-oriented framing. Tech-literate — no need to over-explain.',
     avatar: 'A',
-    color: '#9B59B6',
+    color: '#7f8999',
   },
 }
 
@@ -61,9 +65,9 @@ export function computeTrustScore(client, notesCount, hasDna) {
 }
 
 export function trustColor(score) {
-  if (score >= 72) return '#38a169'
-  if (score >= 48) return '#d69e2e'
-  return '#e53e3e'
+  if (score >= 72) return '#268461'
+  if (score >= 48) return '#31405e'
+  return '#e43f47'
 }
 
 export function trustLabel(score) {
@@ -76,10 +80,10 @@ export function trustLabel(score) {
 // trust-score range, so "clicking the number" shows exactly the clients whose
 // score falls in that band.
 export const TRUST_BANDS = [
-  { key: 'growing',   label: 'GROWING TRUST',    min: 72, max: 100, color: '#2f6b4f', soft: '#e7f0ea' },
-  { key: 'stable',    label: 'STABLE',           min: 55, max: 71,  color: '#33415c', soft: '#eceef2' },
-  { key: 'attention', label: 'ATTENTION NEEDED', min: 40, max: 54,  color: '#b08a32', soft: '#f3ecd6' },
-  { key: 'atrisk',    label: 'AT RISK',          min: 0,  max: 39,  color: '#9c3b46', soft: '#f4e4e6' },
+  { key: 'growing',   label: 'GROWING TRUST',    min: 72, max: 100, color: '#4f9b7f', soft: '#14292c' },
+  { key: 'stable',    label: 'STABLE',           min: 55, max: 71,  color: '#687895', soft: '#192238' },
+  { key: 'attention', label: 'ATTENTION NEEDED', min: 40, max: 54,  color: '#c94a53', soft: '#251d2a' },
+  { key: 'atrisk',    label: 'AT RISK',          min: 0,  max: 39,  color: '#e43f47', soft: '#291b28' },
 ]
 
 export function trustBand(score) {
@@ -87,10 +91,10 @@ export function trustBand(score) {
 }
 
 export function priorityDot(client) {
-  if (client.high_severity_alerts >= 2) return { dot: '🔴', label: 'Critical' }
-  if (client.high_severity_alerts === 1) return { dot: '🔴', label: 'High' }
-  if (client.open_alerts > 0) return { dot: '🟡', label: 'Medium' }
-  return { dot: '🟢', label: 'Clear' }
+  if (client.high_severity_alerts >= 2) return { dot: '●', label: 'Critical', tone: 'critical' }
+  if (client.high_severity_alerts === 1) return { dot: '●', label: 'High', tone: 'critical' }
+  if (client.open_alerts > 0) return { dot: '●', label: 'Medium', tone: 'attention' }
+  return { dot: '●', label: 'Clear', tone: 'clear' }
 }
 
 export const TONE_OPTIONS = [
@@ -101,12 +105,12 @@ export const TONE_OPTIONS = [
 ]
 
 export const SEVERITY_STYLE = {
-  High:                  { color: '#c53030', bg: '#fff5f5', border: '#fc8181' },
-  Medium:                { color: '#c05621', bg: '#fffaf0', border: '#f6ad55' },
-  Low:                   { color: '#b7791f', bg: '#fffff0', border: '#faf089' },
-  'Positive opportunity':{ color: '#276749', bg: '#f0fff4', border: '#9ae6b4' },
-  'CIO conflict':        { color: '#553c9a', bg: '#faf5ff', border: '#d6bcfa' },
-  'ESG conflict':        { color: '#c05621', bg: '#fffaf0', border: '#f6ad55' },
-  'Personal conflict':   { color: '#c53030', bg: '#fff5f5', border: '#fc8181' },
-  'Portfolio conflict':  { color: '#2c5282', bg: '#ebf8ff', border: '#90cdf4' },
+  High:                  { color: '#e9676e', bg: '#291a28', border: '#71313c' },
+  Medium:                { color: '#d98a90', bg: '#251d2a', border: '#60404a' },
+  Low:                   { color: '#a8b0c0', bg: '#1a2235', border: '#38445b' },
+  'Positive opportunity':{ color: '#65c49f', bg: '#132a2d', border: '#285d52' },
+  'CIO conflict':        { color: '#b6bfce', bg: '#192237', border: '#3c4961' },
+  'ESG conflict':        { color: '#d98a90', bg: '#251d2a', border: '#60404a' },
+  'Personal conflict':   { color: '#e9676e', bg: '#291a28', border: '#71313c' },
+  'Portfolio conflict':  { color: '#b6bfce', bg: '#192237', border: '#3c4961' },
 }

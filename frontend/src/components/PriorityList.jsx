@@ -1,4 +1,5 @@
 import { CLIENT_META, computeTrustScore, trustColor, priorityDot } from '../constants'
+import ProfileAvatar from './ProfileAvatar'
 
 export default function PriorityList({ clients, selectedId, onSelect, onOpenConstellation, loading }) {
   if (loading) {
@@ -11,14 +12,14 @@ export default function PriorityList({ clients, selectedId, onSelect, onOpenCons
   }
 
   return (
-    <aside className="left-panel panel">
+    <aside className="left-panel panel" aria-label="Client priorities">
       <div className="panel-title">CLIENT PRIORITIES</div>
       {clients.map((client, idx) => {
         const meta   = CLIENT_META[client.id]
         // Estimate notes count from open_alerts proxy — real count loads with detail
         const score  = computeTrustScore(client, client.open_alerts > 0 ? 3 : 6, !!client.personal_theme)
         const color  = trustColor(score)
-        const { dot, label } = priorityDot(client)
+        const { dot, label, tone } = priorityDot(client)
         const isActive = client.id === selectedId
 
         return (
@@ -26,18 +27,21 @@ export default function PriorityList({ clients, selectedId, onSelect, onOpenCons
             key={client.id}
             className={`client-card${isActive ? ' active' : ''}`}
             onClick={() => onSelect(client.id)}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelect(client.id)}
+            role="button"
+            tabIndex="0"
+            aria-pressed={isActive}
+            aria-label={`${client.name}, trust score ${score}, ${client.open_alerts} open alerts`}
           >
             <div className="client-card-top">
-              <div className="avatar" style={{ background: meta?.color || '#718096' }}>
-                {meta?.avatar || client.name[0]}
-              </div>
+              <ProfileAvatar meta={meta} fallback={meta?.avatar || client.name[0]} />
               <div>
                 <div className="client-name">
                   {idx + 1}. {client.name}
                 </div>
                 <div className="client-strategy">{client.strategy} · {meta?.wealth || '—'}</div>
               </div>
-              <div className="priority-dot" title={label}>{dot}</div>
+              <div className={`priority-dot status-${tone}`} title={label}>{dot}</div>
             </div>
 
             <div className="client-card-bottom">
@@ -51,6 +55,15 @@ export default function PriorityList({ clients, selectedId, onSelect, onOpenCons
                   style={{ color }}
                   title="View Trust Constellation"
                   onClick={(e) => { e.stopPropagation(); onOpenConstellation?.() }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.stopPropagation()
+                      onOpenConstellation?.()
+                    }
+                  }}
+                  role="button"
+                  tabIndex="0"
+                  aria-label={`Trust score ${score}. Open Trust Constellation`}
                 >{score}</span>
               </div>
               <div className={`alert-count${client.open_alerts > 0 ? ' has-alerts' : ''}`}>

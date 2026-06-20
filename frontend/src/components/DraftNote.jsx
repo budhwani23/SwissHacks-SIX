@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { TONE_OPTIONS, SEVERITY_STYLE } from '../constants'
 import { downloadPDF } from '../utils/pdfReport'
 
@@ -7,6 +8,12 @@ export default function DraftNote({
   message, onGenerate, onApprove,
   loading
 }) {
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    setCopied(false)
+  }, [message?.id])
+
   // ── Download as beautiful PDF (opens print dialog) ───────────────
   const downloadReport = () => {
     downloadPDF({
@@ -29,7 +36,12 @@ export default function DraftNote({
   // ── Copy to clipboard ────────────────────────────────────────────
   const copyNote = () => {
     if (message?.content) {
-      navigator.clipboard.writeText(message.content).catch(() => {})
+      navigator.clipboard.writeText(message.content)
+        .then(() => {
+          setCopied(true)
+          window.setTimeout(() => setCopied(false), 1800)
+        })
+        .catch(() => setCopied(false))
     }
   }
 
@@ -41,14 +53,14 @@ export default function DraftNote({
     <aside className="right-panel">
       <div className="right-header">
         <h2>Advisory Note</h2>
-        <p>AI-generated · RM review required before sending</p>
+        <p>Prepared from client and portfolio data · RM review required</p>
       </div>
 
       <div className="right-body">
         {/* ── No client selected ── */}
         {!client && (
           <div className="select-alert-prompt">
-            <div className="icon">✉️</div>
+            <div className="prompt-mark" aria-hidden="true" />
             <p>Select a client and an alert<br />to generate a personalised note.</p>
           </div>
         )}
@@ -56,7 +68,7 @@ export default function DraftNote({
         {/* ── Client selected but no alert ── */}
         {client && !selectedAlert && (
           <div className="select-alert-prompt">
-            <div className="icon">🔔</div>
+            <div className="prompt-mark" aria-hidden="true" />
             <p>Select an alert from the middle panel<br />to generate a tailored advisory note.</p>
           </div>
         )}
@@ -76,12 +88,13 @@ export default function DraftNote({
 
             {/* Tone selector */}
             <div className="section-label">Tone</div>
-            <div className="tone-row">
+            <div className="tone-row" role="group" aria-label="Advisory note tone">
               {TONE_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
                   className={`tone-btn${tone === opt.value ? ' active' : ''}`}
                   onClick={() => onToneChange(opt.value)}
+                  aria-pressed={tone === opt.value}
                 >
                   {opt.label}
                 </button>
@@ -102,12 +115,12 @@ export default function DraftNote({
               onClick={onGenerate}
               disabled={loading}
             >
-              {loading ? '⟳  Generating…' : '✦  Generate Advisory Note'}
+              {loading ? 'Generating…' : 'Generate advisory note'}
             </button>
 
             {/* Loading state */}
             {loading && (
-              <div className="message-loading">
+              <div className="message-loading" role="status" aria-live="polite">
                 <div className="spinner" />
                 Crafting personalised note for {client.name}…
               </div>
@@ -117,9 +130,9 @@ export default function DraftNote({
             {message && !loading && (
               <>
                 <div className="section-label" style={{ marginBottom: 8 }}>
-                  Draft Note {message.approved ? '· ✓ Approved' : ''}
+                  Draft note {message.approved ? '· Approved' : ''}
                 </div>
-                <div className="message-box">{message.content}</div>
+                <div className="message-box" aria-live="polite">{message.content}</div>
               </>
             )}
           </>
@@ -131,11 +144,13 @@ export default function DraftNote({
         <div className="right-footer">
           <div className="action-row">
             {!message.approved && (
-              <button className="btn btn-gold" onClick={onApprove}>✓ Approve</button>
+              <button className="btn btn-gold" onClick={onApprove}>Approve</button>
             )}
-            <button className="btn btn-secondary" onClick={copyNote}>⎘ Copy</button>
-            <button className="btn btn-secondary" onClick={emailNote}>✉ Email</button>
-            <button className="btn btn-secondary" onClick={downloadReport}>↓ PDF Report</button>
+            <button className="btn btn-secondary" onClick={copyNote} aria-live="polite">
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+            <button className="btn btn-secondary" onClick={emailNote}>Email</button>
+            <button className="btn btn-secondary" onClick={downloadReport}>PDF report</button>
           </div>
           <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, lineHeight: 1.5 }}>
             This note is AI-assisted. RM review required before client communication.
