@@ -33,6 +33,20 @@ export const CLIENT_META = {
     avatar: 'A',
     color: '#9B59B6',
   },
+
+  // ── Demo clients (metadata only) — shown alongside the 4 real clients ──
+  weber:   { age: 47, wealth: 'CHF 3.2M', wealth_tier: 'HNW',  avatar: 'W', color: '#e07a5f' },
+  keller:  { age: 61, wealth: 'CHF 1.6M', wealth_tier: 'HNW',  avatar: 'K', color: '#3d7a6b' },
+  meier:   { age: 55, wealth: 'CHF 0.9M', wealth_tier: 'HNW',  avatar: 'M', color: '#c25b6a' },
+  fischer: { age: 39, wealth: 'CHF 2.7M', wealth_tier: 'HNW',  avatar: 'F', color: '#5b6b8c' },
+  brunner: { age: 50, wealth: 'CHF 4.1M', wealth_tier: 'UHNW', avatar: 'B', color: '#2f6b4f' },
+  graf:    { age: 66, wealth: 'CHF 1.3M', wealth_tier: 'HNW',  avatar: 'G', color: '#b08a32' },
+  steiner: { age: 43, wealth: 'CHF 2.0M', wealth_tier: 'HNW',  avatar: 'S', color: '#7a5bbd' },
+  moser:   { age: 58, wealth: 'CHF 0.8M', wealth_tier: 'HNW',  avatar: 'M', color: '#c0563f' },
+  widmer:  { age: 52, wealth: 'CHF 3.6M', wealth_tier: 'UHNW', avatar: 'W', color: '#4A90D9' },
+  baumann: { age: 36, wealth: 'CHF 1.9M', wealth_tier: 'HNW',  avatar: 'B', color: '#38a169' },
+  frei:    { age: 49, wealth: 'CHF 1.1M', wealth_tier: 'HNW',  avatar: 'F', color: '#E8A838' },
+  vogel:   { age: 63, wealth: 'CHF 2.3M', wealth_tier: 'HNW',  avatar: 'V', color: '#9B59B6' },
 }
 
 // Deterministic per-client variance (-18..+18) derived from the client id.

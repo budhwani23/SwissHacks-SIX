@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -20,8 +20,9 @@ import json
 import database as db
 from services.excel_loader import load_from_excel
 from services.news_service import load_mock_news
+from services import gemini_service
 from agents import crm_agent, portfolio_agent, news_agent, reasoning_agent, message_agent
-from agents import sql_agent
+from agents import sql_agent, voice_agent
 
 
 # ─── Startup ─────────────────────────────────────────────────────────────────
@@ -30,7 +31,6 @@ from agents import sql_agent
 async def lifespan(app: FastAPI):
     print("Initialising database...")
     db.init_db()
-    db.reset_transient_data()
     print("Loading data (Excel or mock)...")
     load_from_excel()
     print("Loading mock news triggers...")
@@ -69,6 +69,23 @@ class GenerateMessageRequest(BaseModel):
 
 class AlertStatusRequest(BaseModel):
     status: str  # open | dismissed | escalated | actioned
+
+
+class TranscribeRequest(BaseModel):
+    audio_base64: str
+    mime_type: Optional[str] = "audio/wav"
+
+
+class InterpretRequest(BaseModel):
+    transcript: str
+    clients: Optional[list] = []
+    current_client_id: Optional[str] = None
+    current_tab: Optional[str] = None
+
+
+class SpeakRequest(BaseModel):
+    text: str
+    voice: Optional[str] = None
 
 
 # ─── Routes ──────────────────────────────────────────────────────────────────
@@ -348,3 +365,42 @@ def find_replacement(client_id: str, issuer: str):
         return {"message": "No CIO-approved replacement found in same sector"}
 
     return replacement
+
+
+# ── Voice assistant (Gemini STT/TTS + gpt-oss intent) ──
+
+@app.get("/voice/status")
+def voice_status():
+    """Whether the Gemini key is configured (for the frontend to show a hint)."""
+    return {"configured": gemini_service.is_configured()}
+
+
+@app.post("/voice/transcribe")
+def voice_transcribe(body: TranscribeRequest):
+    """Speech -> text via Gemini."""
+    try:
+        text = gemini_service.transcribe(body.audio_base64, body.mime_type)
+        return {"text": text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
+
+
+@app.post("/voice/interpret")
+def voice_interpret(body: InterpretRequest):
+    """Transcript -> structured UI command via gpt-oss."""
+    try:
+        return voice_agent.interpret(
+            body.transcript, body.clients, body.current_client_id, body.current_tab
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Interpret failed: {e}")
+
+
+@app.post("/voice/speak")
+def voice_speak(body: SpeakRequest):
+    """Text -> spoken WAV audio via Gemini TTS."""
+    try:
+        wav = gemini_service.synthesize(body.text, body.voice)
+        return Response(content=wav, media_type="audio/wav")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"TTS failed: {e}")

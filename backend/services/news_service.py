@@ -27,8 +27,13 @@ def load_mock_news() -> list[dict]:
     with open(MOCK_NEWS_FILE) as f:
         events = json.load(f)
 
+    # Avoid re-inserting on restart — check existing headlines
+    existing = {r["headline"] for r in db.get_all_news()}
+
     inserted = []
     for e in events:
+        if e["headline"] in existing:
+            continue
         news_id = db.insert_news(
             headline=e["headline"],
             company=e["company"],
@@ -39,7 +44,7 @@ def load_mock_news() -> list[dict]:
         )
         inserted.append({**e, "id": news_id})
 
-    print(f"✓ Loaded {len(inserted)} mock news events")
+    print(f"✓ Loaded {len(inserted)} new mock news events ({len(events) - len(inserted)} already present)")
     return inserted
 
 

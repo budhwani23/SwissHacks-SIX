@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from './api'
 import { CLIENT_META, computeTrustScore, TONE_OPTIONS } from './constants'
+import { DEMO_CLIENTS } from './demoClients'
+import { downloadPDF } from './utils/pdfReport'
+import Logo from './components/Logo'
 import LandingPage from './components/LandingPage'
 import PriorityList from './components/PriorityList'
 import ClientDetail from './components/ClientDetail'
 import DraftNote from './components/DraftNote'
 import TrustConstellation from './components/TrustConstellation'
+import VoiceAssistant from './components/VoiceAssistant'
 
 export default function App() {
   const [clients, setClients]             = useState([])
@@ -24,6 +28,9 @@ export default function App() {
   // ── Trust constellation overlay ───────────────────────────────────
   const [showConstellation, setShowConstellation] = useState(false)
 
+  // ── Voice assistant: forced tab signal for ClientDetail ───────────
+  const [voiceTab, setVoiceTab] = useState({ tab: null, n: 0 })
+
   // ── Landing → workspace transition ───────────────────────────────
   const handleLandingSelect = (clientId) => {
     setSelectedId(clientId)
@@ -39,7 +46,11 @@ export default function App() {
     setLoading(l => ({ ...l, clients: true }))
     try {
       const data = await api.getClients()
-      const sorted = [...data].sort((a, b) =>
+      // Merge in frontend-only demo clients so the carousel and dashboard show
+      // the real 4 plus additional clients (backend untouched).
+      const realIds = new Set(data.map(c => c.id))
+      const merged = [...data, ...DEMO_CLIENTS.filter(d => !realIds.has(d.id))]
+      const sorted = [...merged].sort((a, b) =>
         b.high_severity_alerts - a.high_severity_alerts ||
         b.open_alerts - a.open_alerts ||
         a.name.localeCompare(b.name)
@@ -169,6 +180,75 @@ export default function App() {
   const totalOpen   = clients.reduce((s, c) => s + c.open_alerts, 0)
   const hasNoAlerts = clients.length > 0 && totalOpen === 0
 
+  // ── Voice controller (drives the existing UI from spoken commands) ──
+  const voiceOpenClient = (id) => {
+    if (!id) return
+    if (showLanding) handleLandingSelect(id)
+    else { setSelectedId(id); setMessage(null) }
+  }
+  const voiceFetchDetail = async (id) => {
+    const [dnaRes, alerts, portfolio] = await Promise.all([
+      api.getDna(id).catch(() => ({ dna: null, source_notes: [] })),
+      api.getAlerts(id).catch(() => []),
+      api.getPortfolio(id).catch(() => []),
+    ])
+    return {
+      dna: dnaRes.dna,
+      notes: dnaRes.source_notes || [],
+      alerts: Array.isArray(alerts) ? alerts : [],
+      portfolio: Array.isArray(portfolio) ? portfolio : (portfolio.holdings || []),
+    }
+  }
+  const voiceController = {
+    getClients: () => clients,
+    getSelectedId: () => selectedId,
+    getCurrentTab: () => voiceTab.tab || 'alerts',
+    openClient: voiceOpenClient,
+    nextClient: () => {
+      const i = clients.findIndex(c => c.id === selectedId)
+      voiceOpenClient(clients[Math.min(clients.length - 1, i < 0 ? 0 : i + 1)]?.id)
+    },
+    prevClient: () => {
+      const i = clients.findIndex(c => c.id === selectedId)
+      voiceOpenClient(clients[Math.max(0, i <= 0 ? 0 : i - 1)]?.id)
+    },
+    goHome: () => setShowLanding(true),
+    openConstellation: () => setShowConstellation(true),
+    runAnalysis,
+    showTab: (t) => setVoiceTab(v => ({ tab: t, n: v.n + 1 })),
+    fetchDetail: voiceFetchDetail,
+    downloadPdf: () => {
+      if (!selectedClient) return false
+      downloadPDF({
+        client:  selectedClient,
+        meta,
+        dna:     detail?.dna,
+        alerts:  detail?.alerts || [],
+        notes:   detail?.notes  || [],
+        message,
+      })
+      return true
+    },
+    generateNote: async () => {
+      // Use the currently selected alert, or fall back to the best open one
+      const alert = selectedAlert
+        || detail?.alerts?.find(a => a.status === 'open' && a.severity === 'High')
+        || detail?.alerts?.find(a => a.status === 'open')
+      if (!alert || !selectedId) return false
+      setSelectedAlert(alert)
+      setLoading(l => ({ ...l, message: true }))
+      setMessage(null)
+      try {
+        const meta = CLIENT_META[selectedId]
+        const richTone = meta ? `values-led. ${meta.tone_context}` : 'values-led'
+        const result = await api.generateMessage(selectedId, alert.id, richTone)
+        setMessage(result)
+        return true
+      } catch { return false }
+      finally { setLoading(l => ({ ...l, message: false })) }
+    },
+  }
+
   return (
     <div className="app">
       {/* ── Landing page ── */}
@@ -186,8 +266,9 @@ export default function App() {
 
         <header className="app-header">
           <div className="header-left">
-            <span className="logo">⬡ SwissHacks CRM</span>
-            <span className="header-sub">Relationship Intelligence Platform</span>
+            <Logo height={30} />
+            <span className="header-divider" />
+            <span className="header-sub">Relationship Manager for Trust for Wealth.</span>
           </div>
           <div className="header-right">
             <span className="live-badge">● LIVE</span>
@@ -231,6 +312,7 @@ export default function App() {
             detail={detail}
             trustScore={trustScore}
             onOpenConstellation={() => setShowConstellation(true)}
+            voiceTab={voiceTab}
             selectedAlert={selectedAlert}
             onSelectAlert={(a) => { setSelectedAlert(a); setMessage(null) }}
             onDismissAlert={dismissAlert}
@@ -265,6 +347,9 @@ export default function App() {
           }}
         />
       )}
+
+      {/* ── Voice assistant ── */}
+      <VoiceAssistant controller={voiceController} />
     </div>
   )
 }

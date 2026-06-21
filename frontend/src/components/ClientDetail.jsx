@@ -1,11 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CLIENT_META, computeTrustScore, trustColor, trustLabel, SEVERITY_STYLE } from '../constants'
 
 export default function ClientDetail({
-  client, meta, detail, trustScore, onOpenConstellation,
+  client, meta, detail, trustScore, onOpenConstellation, voiceTab,
   selectedAlert, onSelectAlert, onDismissAlert, loading
 }) {
   const [tab, setTab] = useState('alerts')
+
+  // Voice assistant can force a tab change
+  useEffect(() => {
+    if (voiceTab?.tab) setTab(voiceTab.tab)
+  }, [voiceTab?.n])
 
   if (!client) {
     return (
